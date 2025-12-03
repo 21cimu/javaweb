@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authApi } from './api'
 
@@ -7,7 +7,15 @@ const router = useRouter()
 const user = ref(null)
 const isMenuCollapsed = ref(false)
 
+// Handle login event from Login.vue
+const handleUserLogin = (event) => {
+  user.value = event.detail
+}
+
 onMounted(async () => {
+  // Listen for login events
+  window.addEventListener('user-login', handleUserLogin)
+  
   const savedUser = localStorage.getItem('user')
   if (savedUser) {
     user.value = JSON.parse(savedUser)
@@ -22,6 +30,10 @@ onMounted(async () => {
       console.log('Session check failed')
     }
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('user-login', handleUserLogin)
 })
 
 const handleLogout = async () => {

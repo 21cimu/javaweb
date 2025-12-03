@@ -97,8 +97,8 @@ public class VehicleServlet extends HttpServlet {
             vehicle.setSeats(body.has("seats") ? body.get("seats").getAsInt() : 5);
             vehicle.setTransmission(getStringOrNull(body, "transmission"));
             vehicle.setFuelType(getStringOrNull(body, "fuelType"));
-            vehicle.setDailyPrice(body.has("dailyPrice") ? new BigDecimal(body.get("dailyPrice").getAsString()) : BigDecimal.ZERO);
-            vehicle.setDeposit(body.has("deposit") ? new BigDecimal(body.get("deposit").getAsString()) : BigDecimal.ZERO);
+            vehicle.setDailyPrice(getBigDecimalOrDefault(body, "dailyPrice", BigDecimal.ZERO));
+            vehicle.setDeposit(getBigDecimalOrDefault(body, "deposit", BigDecimal.ZERO));
             vehicle.setDepositFree(body.has("depositFree") && body.get("depositFree").getAsBoolean());
             vehicle.setStatus("AVAILABLE");
             vehicle.setStoreId(body.has("storeId") ? body.get("storeId").getAsLong() : null);
@@ -163,8 +163,8 @@ public class VehicleServlet extends HttpServlet {
             if (body.has("seats")) existingVehicle.setSeats(body.get("seats").getAsInt());
             if (body.has("transmission")) existingVehicle.setTransmission(body.get("transmission").getAsString());
             if (body.has("fuelType")) existingVehicle.setFuelType(body.get("fuelType").getAsString());
-            if (body.has("dailyPrice")) existingVehicle.setDailyPrice(new BigDecimal(body.get("dailyPrice").getAsString()));
-            if (body.has("deposit")) existingVehicle.setDeposit(new BigDecimal(body.get("deposit").getAsString()));
+            if (body.has("dailyPrice")) existingVehicle.setDailyPrice(getBigDecimalOrDefault(body, "dailyPrice", existingVehicle.getDailyPrice()));
+            if (body.has("deposit")) existingVehicle.setDeposit(getBigDecimalOrDefault(body, "deposit", existingVehicle.getDeposit()));
             if (body.has("depositFree")) existingVehicle.setDepositFree(body.get("depositFree").getAsBoolean());
             if (body.has("status")) existingVehicle.setStatus(body.get("status").getAsString());
             if (body.has("imageUrl")) existingVehicle.setImageUrl(body.get("imageUrl").getAsString());
@@ -245,6 +245,17 @@ public class VehicleServlet extends HttpServlet {
     
     private String getStringOrNull(JsonObject obj, String key) {
         return obj.has(key) && !obj.get(key).isJsonNull() ? obj.get(key).getAsString() : null;
+    }
+    
+    private BigDecimal getBigDecimalOrDefault(JsonObject obj, String key, BigDecimal defaultValue) {
+        if (!obj.has(key) || obj.get(key).isJsonNull()) {
+            return defaultValue;
+        }
+        try {
+            return new BigDecimal(obj.get(key).getAsString());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
     
     private String createErrorResponse(String message) {

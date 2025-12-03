@@ -1,8 +1,19 @@
 import axios from 'axios'
 
+// Get API base URL from environment or use relative path for production
+const getBaseURL = () => {
+  // Use Vite's import.meta.env for environment variables
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  // In development, Vite proxy handles /api requests
+  // In production, use relative path (assumes backend and frontend on same server)
+  return import.meta.env.DEV ? '/api' : '/car-rental/api'
+}
+
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: 'http://localhost:8080/car-rental/api',
+  baseURL: getBaseURL(),
   timeout: 10000,
   withCredentials: true,
   headers: {

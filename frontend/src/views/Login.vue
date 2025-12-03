@@ -35,14 +35,12 @@ const handleLogin = async () => {
       localStorage.setItem('user', JSON.stringify(res.user))
       ElMessage.success('登录成功')
       
-      // Redirect to the intended page or home
+      // Navigate using router and emit event for App.vue to update user state
       const redirect = router.currentRoute.value.query.redirect || '/'
-      router.push(redirect)
+      await router.push(redirect)
       
-      // Reload the page to update the header
-      setTimeout(() => {
-        window.location.reload()
-      }, 100)
+      // Emit a custom event to notify App.vue about login
+      window.dispatchEvent(new CustomEvent('user-login', { detail: res.user }))
     } else {
       ElMessage.error(res.error || '登录失败')
     }
