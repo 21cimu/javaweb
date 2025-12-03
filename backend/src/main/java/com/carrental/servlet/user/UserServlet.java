@@ -3,6 +3,7 @@ package com.carrental.servlet.user;
 import com.carrental.dao.UserDao;
 import com.carrental.model.User;
 import com.carrental.util.JsonUtil;
+import com.carrental.util.PasswordUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -10,8 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -211,35 +210,18 @@ public class UserServlet extends HttpServlet {
         }
 
         // Verify old password
-        String hashedOld = hashPassword(oldPassword);
-        if (!hashedOld.equals(user.getPassword())) {
+        if (!PasswordUtil.verifyPassword(oldPassword, user.getPassword())) {
             JsonUtil.writeError(response, 401, "旧密码错误");
             return;
         }
 
-        String hashedNew = hashPassword(newPassword);
+        String hashedNew = PasswordUtil.hashPassword(newPassword);
         int result = userDao.updatePassword(userId, hashedNew);
 
         if (result > 0) {
             JsonUtil.writeSuccess(response, "密码修改成功", null);
         } else {
             JsonUtil.writeError(response, 500, "修改失败");
-        }
-    }
-
-    private String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes());
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Password hashing failed", e);
         }
     }
 

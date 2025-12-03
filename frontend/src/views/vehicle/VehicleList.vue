@@ -159,7 +159,9 @@ const loadVehicles = async () => {
     
     // Parse price range
     if (filters.value.priceRange) {
-      const [min, max] = filters.value.priceRange.split('-')
+      const parts = filters.value.priceRange.split('-')
+      const min = parts[0]
+      const max = parts.length > 1 ? parts[1] : undefined
       if (min) params.minPrice = min
       if (max) params.maxPrice = max
     }

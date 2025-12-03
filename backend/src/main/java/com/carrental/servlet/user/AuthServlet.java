@@ -4,6 +4,7 @@ import com.carrental.dao.UserDao;
 import com.carrental.model.User;
 import com.carrental.util.JsonUtil;
 import com.carrental.util.JwtUtil;
+import com.carrental.util.PasswordUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -12,8 +13,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -68,8 +67,7 @@ public class AuthServlet extends HttpServlet {
         }
 
         // Verify password
-        String hashedPassword = hashPassword(password);
-        if (!hashedPassword.equals(user.getPassword())) {
+        if (!PasswordUtil.verifyPassword(password, user.getPassword())) {
             JsonUtil.writeError(response, 401, "密码错误");
             return;
         }
@@ -124,7 +122,7 @@ public class AuthServlet extends HttpServlet {
         }
 
         // Create user
-        User user = new User(username, hashPassword(password), phone);
+        User user = new User(username, PasswordUtil.hashPassword(password), phone);
         user.setInviteCode(generateInviteCode());
         user.setBalance(BigDecimal.ZERO);
         user.setPoints(0);
@@ -174,22 +172,6 @@ public class AuthServlet extends HttpServlet {
         // In production, send SMS with verification code
         // For demo, just return success
         JsonUtil.writeSuccess(response, "验证码已发送", null);
-    }
-
-    private String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes());
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Password hashing failed", e);
-        }
     }
 
     private String generateInviteCode() {
