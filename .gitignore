@@ -1,0 +1,26 @@
+# Backend
+backend/target/
+*.class
+*.jar
+*.war
+*.log
+*.tmp
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.swp
+*.swo
+*~
