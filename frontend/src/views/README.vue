@@ -134,7 +134,7 @@ mvn spring-boot:run</pre>
 
         <div class="footer-info">
           <p>© 2024 畅行租车 - 让出行更简单</p>
-          <el-button type="primary" @click="$router.push('/')">返回首页</el-button>
+          <el-button type="primary" @click="goHome">返回首页</el-button>
         </div>
       </div>
     </el-card>
@@ -142,7 +142,18 @@ mvn spring-boot:run</pre>
 </template>
 
 <script setup>
-// This is a simple README page component
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+/**
+ * Documentation page component for the car rental system
+ * Displays comprehensive information about the system including features,
+ * technology stack, project structure, and quick start guide
+ */
+const goHome = () => {
+  router.push('/')
+}
 </script>
 
 <style scoped>
