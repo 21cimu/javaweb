@@ -57,17 +57,17 @@ cd javaweb
 
 1. Start your MySQL server
 
-2. Create the database and tables:
+2. Create the database and tables. The schema file is located at `backend/src/main/resources/schema.sql`:
 ```bash
 mysql -u root -p < backend/src/main/resources/schema.sql
 ```
 
-Or manually create the database:
+Or manually:
+- Create the database:
 ```sql
 CREATE DATABASE IF NOT EXISTS car_rental DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
-
-Then run the schema file in the `backend/src/main/resources/schema.sql`
+- Then import the schema file using your MySQL client or execute the SQL statements from `backend/src/main/resources/schema.sql`
 
 3. Update database credentials in `backend/src/main/resources/application.properties`:
 ```properties
@@ -91,14 +91,11 @@ mvn clean install
 Deploy the generated WAR file to Tomcat:
 ```bash
 # The WAR file will be in target/car-rental.war
-# Copy it to your Tomcat's webapps directory
+# Copy it to your Tomcat 11 webapps directory
 cp target/car-rental.war $TOMCAT_HOME/webapps/
 ```
 
-Or run with Maven Tomcat plugin (if configured):
-```bash
-mvn tomcat7:run
-```
+Start Tomcat and the application will be automatically deployed.
 
 The backend API will be available at: `http://localhost:8080/car-rental/`
 
