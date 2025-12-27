@@ -19,6 +19,7 @@ const MyCoupons = () => import('@/views/marketing/MyCoupons.vue')
 const Promotions = () => import('@/views/marketing/Promotions.vue')
 const Login = () => import('@/views/user/Login.vue')
 const Register = () => import('@/views/user/Register.vue')
+const README = () => import('@/views/README.vue')
 
 // Admin pages
 const Dashboard = () => import('@/views/admin/Dashboard.vue')
@@ -52,7 +53,8 @@ const routes = [
       { path: 'user', name: 'UserCenter', component: UserCenter, meta: { requiresAuth: true } },
       { path: 'user/verification', name: 'Verification', component: Verification, meta: { requiresAuth: true } },
       { path: 'coupons', name: 'MyCoupons', component: MyCoupons, meta: { requiresAuth: true } },
-      { path: 'promotions', name: 'Promotions', component: Promotions }
+      { path: 'promotions', name: 'Promotions', component: Promotions },
+      { path: 'readme', name: 'README', component: README }
     ]
   },
   { path: '/login', name: 'Login', component: Login },

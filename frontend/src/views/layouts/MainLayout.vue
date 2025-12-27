@@ -10,6 +10,7 @@
         <router-link to="/" :class="{ active: $route.path === '/' }">首页</router-link>
         <router-link to="/vehicles" :class="{ active: $route.path.startsWith('/vehicles') }">选车</router-link>
         <router-link to="/promotions" :class="{ active: $route.path === '/promotions' }">优惠活动</router-link>
+        <router-link to="/readme" :class="{ active: $route.path === '/readme' }">README</router-link>
         <router-link v-if="userStore.isLoggedIn" to="/orders" :class="{ active: $route.path.startsWith('/orders') }">我的订单</router-link>
       </nav>
       
@@ -58,6 +59,7 @@
       <div class="footer-links">
         <a href="#">关于我们</a>
         <a href="#">帮助中心</a>
+        <router-link to="/readme">README</router-link>
         <a href="#">联系客服</a>
         <a href="#">服务条款</a>
         <a href="#">隐私政策</a>
