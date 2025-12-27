@@ -70,6 +70,37 @@
             <p>{{ vehicle.description }}</p>
           </div>
         </div>
+
+        <div class="vehicle-reviews">
+          <div class="reviews-header">
+            <h3>用户评论</h3>
+            <span class="reviews-count" v-if="reviewTotal">共 {{ reviewTotal }} 条</span>
+          </div>
+          <div class="reviews-body" v-loading="reviewLoading">
+            <div v-if="reviews.length">
+              <div v-for="review in reviews" :key="review.id" class="review-item">
+                <div class="review-meta">
+                  <span class="review-user">{{ review.displayName }}</span>
+                  <el-rate
+                    :model-value="review.rating || 0"
+                    disabled
+                    show-score
+                    score-template="{value}分"
+                  />
+                  <span class="review-time">{{ formatReviewTime(review.reviewTime) }}</span>
+                </div>
+                <p class="review-content">{{ review.review }}</p>
+                <div v-if="review.imageList && review.imageList.length" class="review-images">
+                  <img v-for="(img, idx) in review.imageList" :key="idx" :src="img" alt="review">
+                </div>
+              </div>
+            </div>
+            <el-empty v-else-if="!reviewLoading" description="暂无评论" />
+            <div class="review-actions" v-if="hasMoreReviews">
+              <el-button size="small" @click="loadMoreReviews" :loading="reviewLoading">加载更多</el-button>
+            </div>
+          </div>
+        </div>
       </div>
       
       <!-- Booking Panel -->
@@ -185,6 +216,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import dayjs from 'dayjs'
 import { useUserStore } from '@/stores/user'
 import api from '@/api'
 import { Warning, Check, Location, Clock, Phone } from '@element-plus/icons-vue'
@@ -197,6 +229,11 @@ const loading = ref(false)
 const vehicle = ref(null)
 const store = ref(null)
 const stores = ref([])
+const reviews = ref([])
+const reviewLoading = ref(false)
+const reviewPage = ref(1)
+const reviewPageSize = ref(5)
+const reviewTotal = ref(0)
 
 const bookingForm = ref({
   pickupStoreId: null,
@@ -230,6 +267,8 @@ const features = computed(() => {
   }
 })
 
+const hasMoreReviews = computed(() => reviews.value.length < reviewTotal.value)
+
 const getTransmission = (type) => type === 'auto' ? '自动挡' : '手动挡'
 const getFuelType = (type) => {
   const map = { gasoline: '汽油', diesel: '柴油', electric: '纯电', hybrid: '混动' }
@@ -239,6 +278,26 @@ const getCategoryName = (cat) => {
   const map = { economy: '经济型', compact: '紧凑型', midsize: '中型', suv: 'SUV', luxury: '豪华型', minivan: 'MPV' }
   return map[cat] || cat
 }
+
+const parseReviewImages = (images) => {
+  if (!images) return []
+  if (Array.isArray(images)) return images.filter(Boolean)
+  try {
+    const parsed = JSON.parse(images)
+    if (Array.isArray(parsed)) return parsed.filter(Boolean)
+    return parsed ? [parsed] : []
+  } catch {
+    return [images]
+  }
+}
+
+const normalizeReview = (review) => ({
+  ...review,
+  displayName: review.userName || '匿名用户',
+  imageList: parseReviewImages(review.reviewImages)
+})
+
+const formatReviewTime = (value) => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : ''
 
 const disabledDate = (date) => {
   return date.getTime() < Date.now() - 24 * 60 * 60 * 1000
@@ -273,6 +332,50 @@ const loadStores = async () => {
   } catch (error) {
     console.error('Failed to load stores:', error)
   }
+}
+
+const loadReviews = async ({ reset = false, page } = {}) => {
+  if (!route.params.id || reviewLoading.value) return
+  reviewLoading.value = true
+  const targetPage = page || (reset ? 1 : reviewPage.value)
+  try {
+    const res = await api.reviews.list({
+      vehicleId: route.params.id,
+      page: targetPage,
+      pageSize: reviewPageSize.value
+    })
+    if (res.code === 200) {
+      const payload = res.data || {}
+      const list = Array.isArray(payload.list) ? payload.list : []
+      const normalized = list.map(normalizeReview)
+      if (reset) {
+        reviews.value = normalized
+      } else {
+        reviews.value = reviews.value.concat(normalized)
+      }
+      reviewTotal.value = payload.total || 0
+      reviewPage.value = payload.page || targetPage
+    } else {
+      ElMessage.error(res.message || '获取评论失败')
+    }
+  } catch (error) {
+    console.error('Failed to load reviews:', error)
+    ElMessage.error('获取评论失败')
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+const loadMoreReviews = () => {
+  if (reviewLoading.value || !hasMoreReviews.value) return
+  loadReviews({ page: reviewPage.value + 1 })
+}
+
+const resetReviews = () => {
+  reviews.value = []
+  reviewTotal.value = 0
+  reviewPage.value = 1
+  loadReviews({ reset: true })
 }
 
 const handleBook = () => {
@@ -315,10 +418,12 @@ const handleBook = () => {
 onMounted(() => {
   loadVehicle()
   loadStores()
+  resetReviews()
 })
 
 watch(() => route.params.id, () => {
   loadVehicle()
+  resetReviews()
 })
 </script>
 
@@ -433,6 +538,85 @@ watch(() => route.params.id, () => {
 .vehicle-description p {
   color: #606266;
   line-height: 1.8;
+}
+
+.vehicle-reviews {
+  background: #fff;
+  border-radius: 8px;
+  padding: 25px 30px;
+  margin-top: 20px;
+}
+
+.reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.reviews-header h3 {
+  font-size: 16px;
+  color: #303133;
+  margin: 0;
+}
+
+.reviews-count {
+  font-size: 12px;
+  color: #909399;
+}
+
+.review-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.review-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.review-user {
+  font-weight: 600;
+  color: #303133;
+}
+
+.review-time {
+  font-size: 12px;
+  color: #909399;
+  margin-left: auto;
+}
+
+.review-content {
+  color: #606266;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.review-images {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.review-images img {
+  width: 90px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.review-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
 }
 
 /* Booking Panel */

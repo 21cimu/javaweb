@@ -121,6 +121,22 @@
             <el-form-item label="确认密码" prop="confirmPassword">
               <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
             </el-form-item>
+            <el-form-item label="图片验证码" prop="captcha">
+              <div class="captcha-row">
+                <el-input
+                  v-model="passwordForm.captcha"
+                  maxlength="4"
+                  placeholder="请输入验证码"
+                />
+                <img
+                  class="captcha-image"
+                  :class="{ 'is-loading': passwordCaptchaLoading }"
+                  :src="passwordCaptcha"
+                  alt="验证码"
+                  @click="refreshPasswordCaptcha"
+                />
+              </div>
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="changePassword">修改密码</el-button>
             </el-form-item>
@@ -146,7 +162,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import api from '@/api'
@@ -157,6 +173,8 @@ const activeMenu = ref('profile')
 const orderCount = ref(0)
 const passwordFormRef = ref(null)
 const avatarUploading = ref(false)
+const passwordCaptcha = ref('')
+const passwordCaptchaLoading = ref(false)
 
 const profileForm = reactive({
   username: '',
@@ -169,7 +187,8 @@ const profileForm = reactive({
 const passwordForm = reactive({
   oldPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  captcha: ''
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
@@ -189,6 +208,10 @@ const passwordRules = {
   confirmPassword: [
     { required: true, message: '请确认新密码', trigger: 'blur' },
     { validator: validateConfirmPassword, trigger: 'blur' }
+  ],
+  captcha: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    { min: 4, max: 4, message: '验证码为4位', trigger: 'blur' }
   ]
 }
 
@@ -245,9 +268,34 @@ const handleAvatarSelect = async (file) => {
   }
 }
 
+const refreshPasswordCaptcha = async () => {
+  if (passwordCaptchaLoading.value) return
+  passwordCaptchaLoading.value = true
+  try {
+    const res = await api.user.passwordCaptcha()
+    if (res.code === 200 && res.data?.image) {
+      passwordCaptcha.value = res.data.image
+    } else {
+      passwordCaptcha.value = ''
+      ElMessage.error(res.message || '验证码获取失败')
+    }
+  } catch (error) {
+    passwordCaptcha.value = ''
+    ElMessage.error('验证码获取失败')
+  } finally {
+    passwordCaptchaLoading.value = false
+  }
+}
+
 const handleMenuSelect = (index) => {
   activeMenu.value = index
 }
+
+watch(activeMenu, (value) => {
+  if (value === 'security') {
+    refreshPasswordCaptcha()
+  }
+})
 
 const loadProfile = () => {
   if (userStore.user) {
@@ -263,6 +311,9 @@ onMounted(() => {
   // Ensure we have freshest profile including VIP info
   userStore.fetchProfile()
   loadProfile()
+  if (activeMenu.value === 'security') {
+    refreshPasswordCaptcha()
+  }
 })
 
 // VIP helper
@@ -297,7 +348,8 @@ const changePassword = async () => {
   try {
     const res = await api.user.changePassword({
       oldPassword: passwordForm.oldPassword,
-      newPassword: passwordForm.newPassword
+      newPassword: passwordForm.newPassword,
+      captcha: passwordForm.captcha
     })
     if (res.code === 200) {
       ElMessage.success('密码修改成功')
@@ -309,6 +361,9 @@ const changePassword = async () => {
     }
   } catch (error) {
     ElMessage.error('修改失败')
+  } finally {
+    passwordForm.captcha = ''
+    refreshPasswordCaptcha()
   }
 }
 
@@ -425,6 +480,30 @@ const copyInviteCode = () => {
 
 .tab-content {
   padding: 20px;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.captcha-row :deep(.el-input) {
+  flex: 1;
+}
+
+.captcha-image {
+  width: 110px;
+  height: 40px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  cursor: pointer;
+  object-fit: cover;
+}
+
+.captcha-image.is-loading {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .verified-info {

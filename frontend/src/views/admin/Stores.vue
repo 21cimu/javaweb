@@ -104,6 +104,12 @@
         <el-form-item label="纬度">
           <el-input-number v-model="storeForm.latitude" :precision="7" :step="0.0001" />
         </el-form-item>
+        <el-form-item label="地图选点">
+          <div class="map-wrapper">
+            <div ref="mapRef" class="store-map"></div>
+            <div class="map-tip">点击地图选择门店位置</div>
+          </div>
+        </el-form-item>
         <el-form-item label="门店图片">
           <el-input v-model="storeForm.image" placeholder="输入图片URL" />
         </el-form-item>
@@ -117,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 
@@ -126,6 +132,13 @@ const stores = ref([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
+const mapRef = ref(null)
+
+const amapKey = 'f7db0589e08b284eeef6a67627f220e0'
+const amapSecurityJsCode = 'b13984a389ab1a2635a44ab6a71eb45f'
+let mapInstance = null
+let mapMarker = null
+let geocoder = null
 
 const cities = ref(['北京', '上海', '广州', '深圳', '成都', '杭州', '南京', '武汉'])
 
@@ -246,6 +259,122 @@ const editStore = (store) => {
   dialogVisible.value = true
 }
 
+const loadAmapScript = () => new Promise((resolve, reject) => {
+  if (window.AMap) {
+    resolve(window.AMap)
+    return
+  }
+  const existing = document.getElementById('amap-js')
+  if (existing) {
+    existing.addEventListener('load', () => resolve(window.AMap))
+    existing.addEventListener('error', reject)
+    return
+  }
+  window._AMapSecurityConfig = { securityJsCode: amapSecurityJsCode }
+  const script = document.createElement('script')
+  script.id = 'amap-js'
+  script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}`
+  script.async = true
+  script.onload = () => resolve(window.AMap)
+  script.onerror = reject
+  document.head.appendChild(script)
+})
+
+const normalizeCityName = (value) => (value ? value.replace(/市$/, '') : '')
+
+const resolveCityName = (city, province) => {
+  let value = ''
+  if (Array.isArray(city)) {
+    value = city.length ? city[0] : ''
+  } else if (city) {
+    value = city
+  } else if (province && /市$/.test(province)) {
+    value = province
+  }
+  return normalizeCityName(value)
+}
+
+const ensureGeocoder = () => new Promise((resolve) => {
+  if (geocoder) {
+    resolve(geocoder)
+    return
+  }
+  window.AMap.plugin('AMap.Geocoder', () => {
+    geocoder = new window.AMap.Geocoder({ radius: 1000, extensions: 'all' })
+    resolve(geocoder)
+  })
+})
+
+const fillAddressFromLocation = async (lng, lat) => {
+  try {
+    const geo = await ensureGeocoder()
+    geo.getAddress([lng, lat], (status, result) => {
+      if (status === 'complete' && result.regeocode) {
+        const { addressComponent, formattedAddress } = result.regeocode
+        if (formattedAddress) {
+          storeForm.address = formattedAddress
+        }
+        if (addressComponent) {
+          const cityName = resolveCityName(addressComponent.city, addressComponent.province)
+          if (cityName) {
+            storeForm.city = cityName
+            if (!cities.value.includes(cityName)) {
+              cities.value.push(cityName)
+            }
+          }
+          if (addressComponent.district) {
+            storeForm.district = addressComponent.district
+          }
+        }
+      } else {
+        ElMessage.warning('未能解析该位置地址')
+      }
+    })
+  } catch (error) {
+    console.error('解析位置失败', error)
+    ElMessage.warning('未能解析该位置地址')
+  }
+}
+
+const setMapMarker = (lng, lat, syncForm = true) => {
+  if (!mapInstance || lng === null || lat === null || lng === undefined || lat === undefined) return
+  const position = new window.AMap.LngLat(lng, lat)
+  if (!mapMarker) {
+    mapMarker = new window.AMap.Marker({ position })
+    mapInstance.add(mapMarker)
+  } else {
+    mapMarker.setPosition(position)
+  }
+  if (syncForm) {
+    storeForm.longitude = Number(Number(lng).toFixed(7))
+    storeForm.latitude = Number(Number(lat).toFixed(7))
+  }
+}
+
+const initMap = async () => {
+  if (!mapRef.value) return
+  try {
+    await loadAmapScript()
+    if (!mapInstance) {
+      mapInstance = new window.AMap.Map(mapRef.value, {
+        zoom: 13,
+        center: [storeForm.longitude, storeForm.latitude]
+      })
+      mapInstance.on('click', (e) => {
+        const { lng, lat } = e.lnglat
+        setMapMarker(lng, lat, true)
+        fillAddressFromLocation(lng, lat)
+      })
+    }
+    setMapMarker(storeForm.longitude, storeForm.latitude, false)
+    mapInstance.setCenter([storeForm.longitude, storeForm.latitude])
+    mapInstance.resize()
+  } catch (error) {
+    console.error('加载高德地图失败', error)
+    ElMessage.error('地图加载失败，请稍后重试')
+  }
+}
+
 const saveStore = async () => {
   try {
     await formRef.value.validate()
@@ -288,8 +417,28 @@ const deleteStore = async (store) => {
   }
 }
 
+watch(() => dialogVisible.value, async (visible) => {
+  if (visible) {
+    await nextTick()
+    await initMap()
+  }
+})
+
+watch(() => [storeForm.longitude, storeForm.latitude], ([lng, lat]) => {
+  if (!dialogVisible.value || !mapInstance) return
+  setMapMarker(lng, lat, false)
+})
+
 onMounted(() => {
   loadStores()
+})
+
+onBeforeUnmount(() => {
+  if (mapInstance) {
+    mapInstance.destroy()
+    mapInstance = null
+    mapMarker = null
+  }
 })
 </script>
 
@@ -317,5 +466,22 @@ onMounted(() => {
 .pagination {
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+.map-wrapper {
+  width: 100%;
+}
+
+.store-map {
+  width: 100%;
+  height: 260px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+}
+
+.map-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 6px;
 }
 </style>

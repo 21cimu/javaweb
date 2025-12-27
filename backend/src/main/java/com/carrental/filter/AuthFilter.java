@@ -32,6 +32,7 @@ public class AuthFilter implements Filter {
         "/api/vehicles/detail",
         "/api/vehicles/search",
         "/api/vehicles/categories",
+        "/api/reviews",
         "/api/stores/list",
         "/api/marketing/promotions",
         "/api/marketing/banners",

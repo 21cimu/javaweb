@@ -54,6 +54,7 @@ public class VehicleServlet extends HttpServlet {
         String category = request.getParameter("category");
         String brand = request.getParameter("brand");
         String storeIdStr = request.getParameter("storeId");
+        String city = request.getParameter("city");
         String fuelType = request.getParameter("fuelType");
         String minSeatsStr = request.getParameter("minSeats");
         String minPriceStr = request.getParameter("minPrice");
@@ -69,9 +70,9 @@ public class VehicleServlet extends HttpServlet {
         int page = pageStr != null ? Integer.parseInt(pageStr) : 1;
         int pageSize = pageSizeStr != null ? Integer.parseInt(pageSizeStr) : 10;
 
-        List<Vehicle> vehicles = vehicleDao.findAvailable(category, brand, storeId,
+        List<Vehicle> vehicles = vehicleDao.findAvailable(category, brand, storeId, city,
             fuelType, minSeats, minPrice, maxPrice, sortBy, page, pageSize);
-        long total = vehicleDao.countAvailable(category, brand, storeId,
+        long total = vehicleDao.countAvailable(category, brand, storeId, city,
             fuelType, minSeats, minPrice, maxPrice);
 
         // Normalize images
@@ -118,7 +119,7 @@ public class VehicleServlet extends HttpServlet {
             cat.put("code", cats[i]);
             cat.put("name", names[i]);
             cat.put("icon", icons[i]);
-            cat.put("count", vehicleDao.countAvailable(cats[i], null, null, null, null, null, null));
+            cat.put("count", vehicleDao.countAvailable(cats[i], null, null, null, null, null, null, null));
             categories.add(cat);
         }
 

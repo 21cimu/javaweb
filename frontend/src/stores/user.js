@@ -1,22 +1,24 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/api'
+import { clearAuthStorage, getStoredAuth, setAuthStorage } from '@/utils/auth'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref(localStorage.getItem('token') || '')
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  const storedAuth = getStoredAuth()
+  const token = ref(storedAuth.token)
+  const user = ref(storedAuth.user)
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin' || user.value?.role === 'superadmin')
   const isVerified = computed(() => user.value?.verificationStatus === 2)
 
-  async function login(credentials) {
+  async function login(credentials, options = {}) {
+    const { remember = false } = options
     const res = await api.auth.login(credentials)
     if (res.code === 200) {
       token.value = res.data.token
       user.value = res.data.user
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('user', JSON.stringify(res.data.user))
+      setAuthStorage({ token: res.data.token, user: res.data.user }, remember)
     }
     return res
   }
@@ -26,8 +28,7 @@ export const useUserStore = defineStore('user', () => {
     if (res.code === 200) {
       token.value = res.data.token
       user.value = res.data.user
-      localStorage.setItem('token', res.data.token)
-      localStorage.setItem('user', JSON.stringify(res.data.user))
+      setAuthStorage({ token: res.data.token, user: res.data.user })
     }
     return res
   }
@@ -35,8 +36,13 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     token.value = ''
     user.value = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    clearAuthStorage()
+  }
+
+  function syncAuthFromStorage() {
+    const stored = getStoredAuth()
+    token.value = stored.token
+    user.value = stored.user
   }
 
   async function fetchProfile() {
@@ -66,6 +72,7 @@ export const useUserStore = defineStore('user', () => {
     login,
     register,
     logout,
+    syncAuthFromStorage,
     fetchProfile,
     updateProfile
   }

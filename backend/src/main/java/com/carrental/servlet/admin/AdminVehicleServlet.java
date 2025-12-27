@@ -446,6 +446,7 @@ public class AdminVehicleServlet extends HttpServlet {
         m.put("category", v.getCategory());
         m.put("storeId", v.getStoreId());
         m.put("storeName", v.getStoreName());
+        m.put("storeCity", v.getStoreCity());
         m.put("dailyPrice", v.getDailyPrice());
         m.put("weeklyPrice", v.getWeeklyPrice());
         m.put("monthlyPrice", v.getMonthlyPrice());

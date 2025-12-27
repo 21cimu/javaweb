@@ -35,6 +35,9 @@ public class VehicleDao extends BaseDao<Vehicle> {
         try {
             vehicle.setStoreName(getString(rs, "store_name"));
         } catch (SQLException ignored) {}
+        try {
+            vehicle.setStoreCity(getString(rs, "store_city"));
+        } catch (SQLException ignored) {}
         vehicle.setDailyPrice(rs.getBigDecimal("daily_price"));
         vehicle.setWeeklyPrice(rs.getBigDecimal("weekly_price"));
         vehicle.setMonthlyPrice(rs.getBigDecimal("monthly_price"));
@@ -67,7 +70,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public Vehicle findById(Long id) {
         String sql = """
-            SELECT v.*, s.name as store_name 
+            SELECT v.*, s.name as store_name, s.city as store_city 
             FROM vehicles v 
             LEFT JOIN stores s ON v.store_id = s.id 
             WHERE v.id = ?
@@ -79,7 +82,12 @@ public class VehicleDao extends BaseDao<Vehicle> {
      * Find vehicle by plate number
      */
     public Vehicle findByPlateNumber(String plateNumber) {
-        String sql = "SELECT * FROM vehicles WHERE plate_number = ?";
+        String sql = """
+            SELECT v.*, s.name as store_name, s.city as store_city 
+            FROM vehicles v 
+            LEFT JOIN stores s ON v.store_id = s.id 
+            WHERE v.plate_number = ?
+            """;
         return executeQuerySingle(sql, plateNumber);
     }
 
@@ -191,11 +199,11 @@ public class VehicleDao extends BaseDao<Vehicle> {
     /**
      * List available vehicles with filters
      */
-    public List<Vehicle> findAvailable(String category, String brand, Long storeId,
+    public List<Vehicle> findAvailable(String category, String brand, Long storeId, String city,
             String fuelType, Integer minSeats, java.math.BigDecimal minPrice, 
             java.math.BigDecimal maxPrice, String sortBy, int page, int pageSize) {
         StringBuilder sql = new StringBuilder("""
-            SELECT v.*, s.name as store_name 
+            SELECT v.*, s.name as store_name, s.city as store_city 
             FROM vehicles v 
             LEFT JOIN stores s ON v.store_id = s.id 
             WHERE v.status = 1
@@ -213,6 +221,10 @@ public class VehicleDao extends BaseDao<Vehicle> {
         if (storeId != null) {
             sql.append(" AND v.store_id = ?");
             params.add(storeId);
+        }
+        if (city != null && !city.isEmpty()) {
+            sql.append(" AND s.city = ?");
+            params.add(city);
         }
         if (fuelType != null && !fuelType.isEmpty()) {
             sql.append(" AND v.fuel_type = ?");
@@ -254,10 +266,15 @@ public class VehicleDao extends BaseDao<Vehicle> {
     /**
      * Count available vehicles with filters
      */
-    public long countAvailable(String category, String brand, Long storeId,
+    public long countAvailable(String category, String brand, Long storeId, String city,
             String fuelType, Integer minSeats, java.math.BigDecimal minPrice, 
             java.math.BigDecimal maxPrice) {
-        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM vehicles v WHERE v.status = 1");
+        StringBuilder sql = new StringBuilder("""
+            SELECT COUNT(*) 
+            FROM vehicles v 
+            LEFT JOIN stores s ON v.store_id = s.id 
+            WHERE v.status = 1
+            """);
         List<Object> params = new ArrayList<>();
         
         if (category != null && !category.isEmpty()) {
@@ -271,6 +288,10 @@ public class VehicleDao extends BaseDao<Vehicle> {
         if (storeId != null) {
             sql.append(" AND v.store_id = ?");
             params.add(storeId);
+        }
+        if (city != null && !city.isEmpty()) {
+            sql.append(" AND s.city = ?");
+            params.add(city);
         }
         if (fuelType != null && !fuelType.isEmpty()) {
             sql.append(" AND v.fuel_type = ?");
@@ -297,7 +318,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public List<Vehicle> search(String keyword, int page, int pageSize) {
         String sql = """
-            SELECT v.*, s.name as store_name 
+            SELECT v.*, s.name as store_name, s.city as store_city 
             FROM vehicles v 
             LEFT JOIN stores s ON v.store_id = s.id 
             WHERE v.status = 1 
@@ -327,7 +348,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public List<Vehicle> findHotVehicles(int limit) {
         String sql = """
-            SELECT v.*, s.name as store_name 
+            SELECT v.*, s.name as store_name, s.city as store_city 
             FROM vehicles v 
             LEFT JOIN stores s ON v.store_id = s.id 
             WHERE v.status = 1 AND v.is_hot = 1
@@ -342,7 +363,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public List<Vehicle> findNewVehicles(int limit) {
         String sql = """
-            SELECT v.*, s.name as store_name 
+            SELECT v.*, s.name as store_name, s.city as store_city 
             FROM vehicles v 
             LEFT JOIN stores s ON v.store_id = s.id 
             WHERE v.status = 1 AND v.is_new = 1
@@ -357,7 +378,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public List<Vehicle> findAll(int page, int pageSize) {
         String sql = """
-            SELECT v.*, s.name as store_name
+            SELECT v.*, s.name as store_name, s.city as store_city
             FROM vehicles v
             LEFT JOIN stores s ON v.store_id = s.id
             ORDER BY v.created_at DESC
@@ -379,7 +400,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public List<Vehicle> findByStatus(Integer status, int page, int pageSize) {
         String sql = """
-            SELECT v.*, s.name as store_name
+            SELECT v.*, s.name as store_name, s.city as store_city
             FROM vehicles v
             LEFT JOIN stores s ON v.store_id = s.id
             WHERE v.status = ?
@@ -402,7 +423,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public List<Vehicle> findByStore(Long storeId, int page, int pageSize) {
         String sql = """
-            SELECT v.*, s.name as store_name
+            SELECT v.*, s.name as store_name, s.city as store_city
             FROM vehicles v
             LEFT JOIN stores s ON v.store_id = s.id
             WHERE v.store_id = ?
@@ -425,7 +446,7 @@ public class VehicleDao extends BaseDao<Vehicle> {
      */
     public List<Vehicle> findByStoreAndStatus(Long storeId, Integer status, int page, int pageSize) {
         String sql = """
-            SELECT v.*, s.name as store_name
+            SELECT v.*, s.name as store_name, s.city as store_city
             FROM vehicles v
             LEFT JOIN stores s ON v.store_id = s.id
             WHERE v.store_id = ? AND v.status = ?

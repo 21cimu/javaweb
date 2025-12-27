@@ -25,6 +25,7 @@ public class Vehicle implements Serializable {
     private String category; // economy, compact, midsize, suv, luxury, minivan
     private Long storeId;
     private String storeName;
+    private String storeCity;
     private BigDecimal dailyPrice;
     private BigDecimal weeklyPrice;
     private BigDecimal monthlyPrice;
@@ -95,6 +96,9 @@ public class Vehicle implements Serializable {
 
     public String getStoreName() { return storeName; }
     public void setStoreName(String storeName) { this.storeName = storeName; }
+
+    public String getStoreCity() { return storeCity; }
+    public void setStoreCity(String storeCity) { this.storeCity = storeCity; }
 
     public BigDecimal getDailyPrice() { return dailyPrice; }
     public void setDailyPrice(BigDecimal dailyPrice) { this.dailyPrice = dailyPrice; }

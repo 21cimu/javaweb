@@ -22,7 +22,7 @@
             <el-input v-model="form.idCard" placeholder="请输入18位身份证号" />
           </el-form-item>
           <el-form-item label="驾驶证号" prop="driverLicense">
-            <el-input v-model="form.driverLicense" placeholder="请输入驾驶证号" />
+            <el-input v-model="form.driverLicense" placeholder="请输入13位驾驶证号" maxlength="13" inputmode="numeric" />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="nextStep">下一步</el-button>
@@ -171,7 +171,8 @@ const basicRules = {
     { pattern: /^\d{17}[\dXx]$/, message: '请输入有效的身份证号', trigger: 'blur' }
   ],
   driverLicense: [
-    { required: true, message: '请输入驾驶证号', trigger: 'blur' }
+    { required: true, message: '请输入驾驶证号', trigger: 'blur' },
+    { pattern: /^\d{13}$/, message: '驾驶证号需为13位有效数字', trigger: 'blur' }
   ]
 }
 

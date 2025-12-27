@@ -134,6 +134,7 @@ const pageSize = ref(12)
 const sortBy = ref('default')
 
 const filters = ref({
+  city: '',
   category: '',
   brand: '',
   fuelType: '',
@@ -214,6 +215,7 @@ const handleSearch = () => {
 
 const handleReset = () => {
   filters.value = {
+    city: '',
     category: '',
     brand: '',
     fuelType: '',
@@ -232,6 +234,7 @@ const handleSort = () => {
 
 // Watch route query for initial filter values
 watch(() => route.query, (query) => {
+  if (query.city) filters.value.city = query.city
   if (query.category) filters.value.category = query.category
   if (query.brand) filters.value.brand = query.brand
   loadVehicles()

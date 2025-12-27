@@ -87,10 +87,13 @@ const handleLogin = async () => {
   
   loading.value = true
   try {
-    const res = await userStore.login({
-      username: form.username,
-      password: form.password
-    })
+    const res = await userStore.login(
+      {
+        username: form.username,
+        password: form.password
+      },
+      { remember: form.remember }
+    )
     
     if (res.code === 200) {
       ElMessage.success('登录成功')

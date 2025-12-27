@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { clearAuthStorage, getStoredToken } from '@/utils/auth'
 
 const instance = axios.create({
   baseURL: '/api',
@@ -9,7 +10,7 @@ const instance = axios.create({
 // Request interceptor
 instance.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const token = getStoredToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -30,8 +31,7 @@ instance.interceptors.response.use(
       const { status, data } = error.response
       switch (status) {
         case 401:
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
+          clearAuthStorage()
           if (window.location.pathname !== '/login') {
             window.location.href = '/login'
           }
@@ -70,7 +70,8 @@ const api = {
     updateProfile: (data) => instance.post('/user/profile', data),
     getVerification: () => instance.get('/user/verification'),
     submitVerification: (data) => instance.post('/user/verification', data),
-    changePassword: (data) => instance.post('/user/password', data)
+    changePassword: (data) => instance.post('/user/password', data),
+    passwordCaptcha: () => instance.get('/user/password-captcha')
   },
 
   // Vehicles
@@ -100,6 +101,11 @@ const api = {
     cancel: (data) => instance.post('/orders/cancel', data),
     review: (data) => instance.post('/orders/review', data),
     calculate: (data) => instance.post('/orders/calculate', data)
+  },
+
+  // Reviews (public)
+  reviews: {
+    list: (params) => instance.get('/reviews/list', { params })
   },
 
   // Payment
