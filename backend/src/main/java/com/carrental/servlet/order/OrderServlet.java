@@ -178,6 +178,13 @@ public class OrderServlet extends HttpServlet {
             JsonUtil.toJson(body.get("addServices")) : null;
         Long couponId = body.get("couponId") != null ? 
             ((Number) body.get("couponId")).longValue() : null;
+        String deliveryAddress = (String) body.get("deliveryAddress");
+        String deliveryCity = (String) body.get("deliveryCity");
+        String deliveryDistrict = (String) body.get("deliveryDistrict");
+        BigDecimal deliveryLng = body.get("deliveryLng") != null ?
+            new BigDecimal(body.get("deliveryLng").toString()) : null;
+        BigDecimal deliveryLat = body.get("deliveryLat") != null ?
+            new BigDecimal(body.get("deliveryLat").toString()) : null;
 
         // Validate vehicle
         Vehicle vehicle = vehicleDao.findById(vehicleId);
@@ -293,6 +300,11 @@ public class OrderServlet extends HttpServlet {
         order.setPickupCode(generatePickupCode());
         order.setInsuranceType(insuranceType);
         order.setAddServices(addServices);
+        order.setDeliveryAddress(deliveryAddress);
+        order.setDeliveryCity(deliveryCity);
+        order.setDeliveryDistrict(deliveryDistrict);
+        order.setDeliveryLng(deliveryLng);
+        order.setDeliveryLat(deliveryLat);
 
         Long orderId = orderDao.create(order);
         if (orderId == null) {

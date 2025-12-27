@@ -22,6 +22,11 @@ public class Order implements Serializable {
     private String pickupStoreName;
     private Long returnStoreId;
     private String returnStoreName;
+    private String deliveryAddress;
+    private String deliveryCity;
+    private String deliveryDistrict;
+    private BigDecimal deliveryLng;
+    private BigDecimal deliveryLat;
     private LocalDateTime pickupTime;
     private LocalDateTime returnTime;
     private LocalDateTime actualPickupTime;
@@ -121,6 +126,21 @@ public class Order implements Serializable {
 
     public String getReturnStoreName() { return returnStoreName; }
     public void setReturnStoreName(String returnStoreName) { this.returnStoreName = returnStoreName; }
+
+    public String getDeliveryAddress() { return deliveryAddress; }
+    public void setDeliveryAddress(String deliveryAddress) { this.deliveryAddress = deliveryAddress; }
+
+    public String getDeliveryCity() { return deliveryCity; }
+    public void setDeliveryCity(String deliveryCity) { this.deliveryCity = deliveryCity; }
+
+    public String getDeliveryDistrict() { return deliveryDistrict; }
+    public void setDeliveryDistrict(String deliveryDistrict) { this.deliveryDistrict = deliveryDistrict; }
+
+    public BigDecimal getDeliveryLng() { return deliveryLng; }
+    public void setDeliveryLng(BigDecimal deliveryLng) { this.deliveryLng = deliveryLng; }
+
+    public BigDecimal getDeliveryLat() { return deliveryLat; }
+    public void setDeliveryLat(BigDecimal deliveryLat) { this.deliveryLat = deliveryLat; }
 
     public LocalDateTime getPickupTime() { return pickupTime; }
     public void setPickupTime(LocalDateTime pickupTime) { this.pickupTime = pickupTime; }

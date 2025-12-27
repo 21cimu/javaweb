@@ -37,6 +37,9 @@
             <el-descriptions-item label="还车门店">
               {{ getStoreName(bookingInfo.returnStoreId) }}
             </el-descriptions-item>
+            <el-descriptions-item v-if="bookingInfo.deliveryAddress" label="送车地址">
+              {{ formatDeliveryAddress(bookingInfo) }}
+            </el-descriptions-item>
             <el-descriptions-item label="取车时间">
               {{ formatDate(bookingInfo.pickupTime) }}
             </el-descriptions-item>
@@ -290,6 +293,12 @@ const getStoreName = (storeId) => {
   return store?.name || '未知门店'
 }
 
+const formatDeliveryAddress = (info) => {
+  if (!info) return '-'
+  const parts = [info.deliveryCity, info.deliveryDistrict, info.deliveryAddress].filter(Boolean)
+  return parts.length ? parts.join('') : '-'
+}
+
 const loadStores = async () => {
   try {
     const res = await api.stores.list()
@@ -316,6 +325,13 @@ const calculatePrice = async () => {
   if (!bookingInfo.value) return
   
   try {
+    const deliveryPayload = bookingInfo.value?.deliveryAddress ? {
+      deliveryAddress: bookingInfo.value.deliveryAddress,
+      deliveryCity: bookingInfo.value.deliveryCity,
+      deliveryDistrict: bookingInfo.value.deliveryDistrict,
+      deliveryLng: bookingInfo.value.deliveryLng,
+      deliveryLat: bookingInfo.value.deliveryLat
+    } : {}
     const res = await api.orders.calculate({
       vehicleId: bookingInfo.value.vehicleId,
       pickupStoreId: bookingInfo.value.pickupStoreId,
@@ -323,7 +339,8 @@ const calculatePrice = async () => {
       pickupTime: formatDate(bookingInfo.value.pickupTime),
       returnTime: formatDate(bookingInfo.value.returnTime),
       insuranceType: insuranceType.value,
-      couponId: selectedCouponId.value
+      couponId: selectedCouponId.value,
+      ...deliveryPayload
     })
     
     if (res.code === 200) {
@@ -342,6 +359,13 @@ const submitOrder = async () => {
   
   loading.value = true
   try {
+    const deliveryPayload = bookingInfo.value?.deliveryAddress ? {
+      deliveryAddress: bookingInfo.value.deliveryAddress,
+      deliveryCity: bookingInfo.value.deliveryCity,
+      deliveryDistrict: bookingInfo.value.deliveryDistrict,
+      deliveryLng: bookingInfo.value.deliveryLng,
+      deliveryLat: bookingInfo.value.deliveryLat
+    } : {}
     const res = await api.orders.create({
       vehicleId: bookingInfo.value.vehicleId,
       pickupStoreId: bookingInfo.value.pickupStoreId,
@@ -349,7 +373,8 @@ const submitOrder = async () => {
       pickupTime: formatDate(bookingInfo.value.pickupTime),
       returnTime: formatDate(bookingInfo.value.returnTime),
       insuranceType: insuranceType.value,
-      couponId: selectedCouponId.value
+      couponId: selectedCouponId.value,
+      ...deliveryPayload
     })
     
     if (res.code === 200) {

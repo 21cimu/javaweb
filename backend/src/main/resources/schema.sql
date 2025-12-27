@@ -120,6 +120,11 @@ CREATE TABLE IF NOT EXISTS orders (
     pickup_store_name VARCHAR(100),
     return_store_id BIGINT,
     return_store_name VARCHAR(100),
+    delivery_address VARCHAR(500),
+    delivery_city VARCHAR(50),
+    delivery_district VARCHAR(50),
+    delivery_lng DECIMAL(10, 7),
+    delivery_lat DECIMAL(10, 7),
     pickup_time DATETIME NOT NULL,
     return_time DATETIME NOT NULL,
     actual_pickup_time DATETIME,
@@ -173,6 +178,14 @@ CREATE TABLE IF NOT EXISTS orders (
 -- Add spending_accounted to orders (after orders table definition)
 ALTER TABLE orders
     ADD COLUMN spending_accounted TINYINT NOT NULL DEFAULT 0 COMMENT '0-not accounted,1-accounted';
+
+-- Add delivery address fields to orders (after orders table definition)
+ALTER TABLE orders
+    ADD COLUMN delivery_address VARCHAR(500),
+    ADD COLUMN delivery_city VARCHAR(50),
+    ADD COLUMN delivery_district VARCHAR(50),
+    ADD COLUMN delivery_lng DECIMAL(10, 7),
+    ADD COLUMN delivery_lat DECIMAL(10, 7);
 
 -- Coupons table
 CREATE TABLE IF NOT EXISTS coupons (

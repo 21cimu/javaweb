@@ -28,6 +28,13 @@ public class OrderDao extends BaseDao<Order> {
         order.setPickupStoreName(getString(rs, "pickup_store_name"));
         order.setReturnStoreId(getLong(rs, "return_store_id"));
         order.setReturnStoreName(getString(rs, "return_store_name"));
+        try {
+            order.setDeliveryAddress(getString(rs, "delivery_address"));
+            order.setDeliveryCity(getString(rs, "delivery_city"));
+            order.setDeliveryDistrict(getString(rs, "delivery_district"));
+            order.setDeliveryLng(rs.getBigDecimal("delivery_lng"));
+            order.setDeliveryLat(rs.getBigDecimal("delivery_lat"));
+        } catch (SQLException ignored) {}
         order.setPickupTime(getLocalDateTime(rs, "pickup_time"));
         order.setReturnTime(getLocalDateTime(rs, "return_time"));
         order.setActualPickupTime(getLocalDateTime(rs, "actual_pickup_time"));
@@ -96,19 +103,22 @@ public class OrderDao extends BaseDao<Order> {
         String sql = """
             INSERT INTO orders (order_no, user_id, user_name, user_phone, vehicle_id,
                 vehicle_name, vehicle_plate, pickup_store_id, pickup_store_name,
-                return_store_id, return_store_name, pickup_time, return_time,
+                return_store_id, return_store_name, delivery_address, delivery_city,
+                delivery_district, delivery_lng, delivery_lat, pickup_time, return_time,
                 rental_days, daily_price, rental_amount, deposit, insurance_amount,
                 service_amount, extra_amount, discount_amount, total_amount,
                 paid_amount, refund_amount, coupon_id, coupon_code, status,
                 pickup_code, insurance_type, add_services, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
             """;
         return executeInsert(sql, order.getOrderNo(), order.getUserId(),
             order.getUserName(), order.getUserPhone(), order.getVehicleId(),
             order.getVehicleName(), order.getVehiclePlate(), order.getPickupStoreId(),
             order.getPickupStoreName(), order.getReturnStoreId(), order.getReturnStoreName(),
-            order.getPickupTime(), order.getReturnTime(), order.getRentalDays(),
+            order.getDeliveryAddress(), order.getDeliveryCity(), order.getDeliveryDistrict(),
+            order.getDeliveryLng(), order.getDeliveryLat(), order.getPickupTime(),
+            order.getReturnTime(), order.getRentalDays(),
             order.getDailyPrice(), order.getRentalAmount(), order.getDeposit(),
             order.getInsuranceAmount(), order.getServiceAmount(), order.getExtraAmount(),
             order.getDiscountAmount(), order.getTotalAmount(), order.getPaidAmount(),

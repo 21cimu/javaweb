@@ -177,9 +177,14 @@
             押金：¥{{ vehicle.deposit }}
           </div>
           
-          <el-button type="primary" size="large" block @click="handleBook">
-            立即预订
-          </el-button>
+          <div class="booking-actions">
+            <el-button type="primary" size="large" @click="handleBook">
+              立即预定
+            </el-button>
+            <el-button type="success" size="large" @click="handleDelivery">
+              送车上门
+            </el-button>
+          </div>
           
           <div class="booking-tips">
             <p><el-icon><Check /></el-icon> 免费取消（取车前24小时）</p>
@@ -209,11 +214,34 @@
         </el-card>
       </div>
     </div>
-  </div>
+  
+
+    <el-dialog v-model="deliveryDialogVisible" title="送车上门" width="720px">
+      <div class="delivery-map-section">
+        <div ref="deliveryMapRef" class="delivery-map"></div>
+        <div class="delivery-map-tip">点击地图选择送车地址</div>
+      </div>
+      <el-form :model="deliveryForm" label-width="80px" class="delivery-form">
+        <el-form-item label="送车地址">
+          <el-input v-model="deliveryForm.address" placeholder="点击地图选择送车地址" />
+        </el-form-item>
+        <el-form-item label="城市">
+          <el-input v-model="deliveryForm.city" placeholder="自动识别城市" />
+        </el-form-item>
+        <el-form-item label="区县">
+          <el-input v-model="deliveryForm.district" placeholder="自动识别区县" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="deliveryDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmDeliveryBooking">确认送车</el-button>
+      </template>
+    </el-dialog>
+</div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
@@ -234,6 +262,22 @@ const reviewLoading = ref(false)
 const reviewPage = ref(1)
 const reviewPageSize = ref(5)
 const reviewTotal = ref(0)
+const deliveryDialogVisible = ref(false)
+const deliveryMapRef = ref(null)
+
+const deliveryForm = reactive({
+  address: '',
+  city: '',
+  district: '',
+  longitude: null,
+  latitude: null
+})
+
+const amapKey = 'f7db0589e08b284eeef6a67627f220e0'
+const amapSecurityJsCode = 'b13984a389ab1a2635a44ab6a71eb45f'
+let deliveryMapInstance = null
+let deliveryMarker = null
+let deliveryGeocoder = null
 
 const bookingForm = ref({
   pickupStoreId: null,
@@ -298,6 +342,123 @@ const normalizeReview = (review) => ({
 })
 
 const formatReviewTime = (value) => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : ''
+
+const normalizeCityName = (value) => (value ? value.replace(/市$/, '') : '')
+
+const resolveCityName = (city, province) => {
+  let value = ''
+  if (Array.isArray(city)) {
+    value = city.length ? city[0] : ''
+  } else if (city) {
+    value = city
+  } else if (province && /市$/.test(province)) {
+    value = province
+  }
+  return normalizeCityName(value)
+}
+
+const loadAmapScript = () => new Promise((resolve, reject) => {
+  if (window.AMap) {
+    resolve(window.AMap)
+    return
+  }
+  const existing = document.getElementById('amap-js')
+  if (existing) {
+    existing.addEventListener('load', () => resolve(window.AMap))
+    existing.addEventListener('error', reject)
+    return
+  }
+  window._AMapSecurityConfig = { securityJsCode: amapSecurityJsCode }
+  const script = document.createElement('script')
+  script.id = 'amap-js'
+  script.src = `https://webapi.amap.com/maps?v=2.0&key=${amapKey}`
+  script.async = true
+  script.onload = () => resolve(window.AMap)
+  script.onerror = reject
+  document.head.appendChild(script)
+})
+
+const ensureDeliveryGeocoder = () => new Promise((resolve) => {
+  if (deliveryGeocoder) {
+    resolve(deliveryGeocoder)
+    return
+  }
+  window.AMap.plugin('AMap.Geocoder', () => {
+    deliveryGeocoder = new window.AMap.Geocoder({ radius: 1000, extensions: 'all' })
+    resolve(deliveryGeocoder)
+  })
+})
+
+const setDeliveryMarker = (lng, lat, syncForm = true) => {
+  if (!deliveryMapInstance || lng === null || lat === null || lng === undefined || lat === undefined) return
+  const position = new window.AMap.LngLat(lng, lat)
+  if (!deliveryMarker) {
+    deliveryMarker = new window.AMap.Marker({ position })
+    deliveryMapInstance.add(deliveryMarker)
+  } else {
+    deliveryMarker.setPosition(position)
+  }
+  if (syncForm) {
+    deliveryForm.longitude = Number(Number(lng).toFixed(7))
+    deliveryForm.latitude = Number(Number(lat).toFixed(7))
+  }
+}
+
+const fillDeliveryAddress = async (lng, lat) => {
+  try {
+    const geo = await ensureDeliveryGeocoder()
+    geo.getAddress([lng, lat], (status, result) => {
+      if (status === 'complete' && result.regeocode) {
+        const { addressComponent, formattedAddress } = result.regeocode
+        if (formattedAddress) {
+          deliveryForm.address = formattedAddress
+        }
+        if (addressComponent) {
+          const cityName = resolveCityName(addressComponent.city, addressComponent.province)
+          if (cityName) {
+            deliveryForm.city = cityName
+          }
+          if (addressComponent.district) {
+            deliveryForm.district = addressComponent.district
+          }
+        }
+      } else {
+        ElMessage.warning('未能解析该位置地址')
+      }
+    })
+  } catch (error) {
+    console.error('解析位置失败', error)
+    ElMessage.warning('未能解析该位置地址')
+  }
+}
+
+const initDeliveryMap = async () => {
+  if (!deliveryMapRef.value) return
+  try {
+    await loadAmapScript()
+    const fallbackLng = store.value?.longitude ?? 116.4074
+    const fallbackLat = store.value?.latitude ?? 39.9042
+    const centerLng = deliveryForm.longitude ?? fallbackLng
+    const centerLat = deliveryForm.latitude ?? fallbackLat
+    if (!deliveryMapInstance) {
+      deliveryMapInstance = new window.AMap.Map(deliveryMapRef.value, {
+        zoom: 13,
+        center: [centerLng, centerLat]
+      })
+      deliveryMapInstance.on('click', (e) => {
+        const { lng, lat } = e.lnglat
+        setDeliveryMarker(lng, lat, true)
+        fillDeliveryAddress(lng, lat)
+      })
+    }
+    setDeliveryMarker(centerLng, centerLat, false)
+    deliveryMapInstance.setCenter([centerLng, centerLat])
+    deliveryMapInstance.resize()
+  } catch (error) {
+    console.error('加载高德地图失败', error)
+    ElMessage.error('地图加载失败，请稍后重试')
+  }
+}
 
 const disabledDate = (date) => {
   return date.getTime() < Date.now() - 24 * 60 * 60 * 1000
@@ -378,47 +539,102 @@ const resetReviews = () => {
   loadReviews({ reset: true })
 }
 
-const handleBook = () => {
+const ensureBookingReady = () => {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录')
     router.push({ name: 'Login', query: { redirect: route.fullPath } })
-    return
+    return false
   }
-  
+
   if (!bookingForm.value.pickupStoreId) {
     ElMessage.warning('请选择取车门店')
-    return
+    return false
   }
   if (!bookingForm.value.pickupTime) {
     ElMessage.warning('请选择取车时间')
-    return
+    return false
   }
   if (!bookingForm.value.returnTime) {
     ElMessage.warning('请选择还车时间')
-    return
+    return false
   }
   if (bookingForm.value.returnTime <= bookingForm.value.pickupTime) {
     ElMessage.warning('还车时间必须晚于取车时间')
-    return
+    return false
   }
-  
-  // Store booking info and navigate to confirm page
-  sessionStorage.setItem('bookingInfo', JSON.stringify({
-    vehicleId: vehicle.value.id,
-    vehicle: vehicle.value,
-    pickupStoreId: bookingForm.value.pickupStoreId,
-    returnStoreId: bookingForm.value.differentReturn ? bookingForm.value.returnStoreId : bookingForm.value.pickupStoreId,
-    pickupTime: bookingForm.value.pickupTime,
-    returnTime: bookingForm.value.returnTime
-  }))
-  
+  return true
+}
+
+const buildBookingInfo = (extra = {}) => ({
+  vehicleId: vehicle.value.id,
+  vehicle: vehicle.value,
+  pickupStoreId: bookingForm.value.pickupStoreId,
+  returnStoreId: bookingForm.value.differentReturn ? bookingForm.value.returnStoreId : bookingForm.value.pickupStoreId,
+  pickupTime: bookingForm.value.pickupTime,
+  returnTime: bookingForm.value.returnTime,
+  ...extra
+})
+
+const handleBook = () => {
+  if (!ensureBookingReady()) return
+
+  sessionStorage.setItem('bookingInfo', JSON.stringify(buildBookingInfo()))
   router.push('/order/confirm')
 }
+
+const handleDelivery = () => {
+  if (!ensureBookingReady()) return
+  if (!deliveryForm.longitude || !deliveryForm.latitude) {
+    deliveryForm.longitude = store.value?.longitude ?? 116.4074
+    deliveryForm.latitude = store.value?.latitude ?? 39.9042
+  }
+  deliveryDialogVisible.value = true
+}
+
+const confirmDeliveryBooking = () => {
+  if (!deliveryForm.address || !deliveryForm.longitude || !deliveryForm.latitude) {
+    ElMessage.warning('请选择送车地址')
+    return
+  }
+
+  const deliveryInfo = {
+    deliveryAddress: deliveryForm.address,
+    deliveryCity: deliveryForm.city,
+    deliveryDistrict: deliveryForm.district,
+    deliveryLng: deliveryForm.longitude,
+    deliveryLat: deliveryForm.latitude
+  }
+
+  sessionStorage.setItem('bookingInfo', JSON.stringify(buildBookingInfo(deliveryInfo)))
+  deliveryDialogVisible.value = false
+  router.push('/order/confirm')
+}
+
+watch(() => deliveryDialogVisible.value, async (visible) => {
+  if (visible) {
+    await nextTick()
+    await initDeliveryMap()
+  }
+})
+
+watch(() => [deliveryForm.longitude, deliveryForm.latitude], ([lng, lat]) => {
+  if (!deliveryDialogVisible.value || !deliveryMapInstance) return
+  setDeliveryMarker(lng, lat, false)
+})
 
 onMounted(() => {
   loadVehicle()
   loadStores()
   resetReviews()
+})
+
+onBeforeUnmount(() => {
+  if (deliveryMapInstance) {
+    deliveryMapInstance.destroy()
+    deliveryMapInstance = null
+    deliveryMarker = null
+    deliveryGeocoder = null
+  }
 })
 
 watch(() => route.params.id, () => {
@@ -629,6 +845,15 @@ watch(() => route.params.id, () => {
   margin-bottom: 20px;
 }
 
+.booking-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.booking-actions .el-button {
+  flex: 1;
+}
+
 .price-display {
   text-align: center;
   margin-bottom: 15px;
@@ -695,6 +920,23 @@ watch(() => route.params.id, () => {
   font-size: 12px;
   color: #67C23A;
   margin-bottom: 8px;
+}
+
+.delivery-map-section {
+  margin-bottom: 12px;
+}
+
+.delivery-map {
+  width: 100%;
+  height: 260px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+}
+
+.delivery-map-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 6px;
 }
 
 .store-card h3 {

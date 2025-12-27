@@ -117,6 +117,7 @@
           <el-descriptions-item label="车牌">{{ currentOrder.vehiclePlate }}</el-descriptions-item>
           <el-descriptions-item label="取车门店">{{ currentOrder.pickupStoreName }}</el-descriptions-item>
           <el-descriptions-item label="还车门店">{{ currentOrder.returnStoreName }}</el-descriptions-item>
+          <el-descriptions-item label="送车地址">{{ formatDeliveryAddress(currentOrder) }}</el-descriptions-item>
           <el-descriptions-item label="取车时间">{{ formatDate(currentOrder.pickupTime) }}</el-descriptions-item>
           <el-descriptions-item label="还车时间">{{ formatDate(currentOrder.returnTime) }}</el-descriptions-item>
           <el-descriptions-item label="租期天数">{{ currentOrder.rentalDays }}天</el-descriptions-item>
@@ -241,6 +242,12 @@ const getStatusType = (status) => {
 }
 
 const formatDate = (date) => date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '-'
+
+const formatDeliveryAddress = (order) => {
+  if (!order) return '-'
+  const parts = [order.deliveryCity, order.deliveryDistrict, order.deliveryAddress].filter(Boolean)
+  return parts.length ? parts.join('') : '-'
+}
 
 const loadOrders = async () => {
   loading.value = true
